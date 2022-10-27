@@ -52,7 +52,7 @@ app
     const newUser = new User({ username });
     newUser.save((err, data) => {
       if (err) return res.json({ error: err });
-      res.json({ data });
+      res.json({ username: data.username, _id: data._id });
     });
   });
 
@@ -63,18 +63,24 @@ app.post("/api/users/:_id/exercise", async (req, res) => {
     const existedUser = await User.findById(_id);
     if (!date) date = new Date();
     const newExercise = new Exercise({
+      user_id: _id,
       username: existedUser.username,
-      _id,
       description,
       duration,
       date,
     });
-    res.json({
-      username: data.username,
-      description: data.description,
-      duration: data.duration,
-      date: data.date.toDateString(),
-      _id: data._id,
+    newExercise.save((err, data) => {
+      if (err) {
+        console.log(err);
+        return res.json({ error: err });
+      }
+      res.json({
+        username: data.username,
+        description: data.description,
+        duration: data.duration,
+        date: data.date.toDateString(),
+        _id: data.user_id,
+      });
     });
   } catch (err) {
     console.error(err);
@@ -87,7 +93,7 @@ app.get("/api/users/:id/logs", async (req, res) => {
   let { from, to, limit } = req.query;
   try {
     const user = await User.findById(id);
-    const exercises = await Exercise.find({ _id: id }).limit(limit);
+    const exercises = await Exercise.find({ user_id: id });
     const exerciseResult = [];
     exercises.map((exercise) => {
       // check if date is between from and to
