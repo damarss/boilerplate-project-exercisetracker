@@ -84,17 +84,30 @@ app.post("/api/users/:_id/exercise", async (req, res) => {
 
 app.get("/api/users/:id/logs", async (req, res) => {
   const { id } = req.params;
-  const { from, to, limit } = req.query;
+  let { from, to, limit } = req.query;
   try {
     const user = await User.findById(id);
     const exercises = await Exercise.find({ _id: id }).limit(limit);
     const exerciseResult = [];
     exercises.map((exercise) => {
-      exerciseResult.push({
-        description: exercise.description,
-        duration: exercise.duration,
-        date: exercise.date.toDateString(),
-      });
+      // check if date is between from and to
+      if (from && to) {
+        from = new Date(from);
+        to = new Date(to);
+        if (exercise.date >= from && exercise.date <= to) {
+          exerciseResult.push({
+            description: exercise.description,
+            duration: exercise.duration,
+            date: exercise.date.toDateString(),
+          });
+        }
+      } else {
+        exerciseResult.push({
+          description: exercise.description,
+          duration: exercise.duration,
+          date: exercise.date.toDateString(),
+        });
+      }
     });
     res.json({
       username: user.username,
