@@ -22,6 +22,7 @@ const exerciseSchema = new mongoose.Schema({
   description: { type: String, required: true },
   duration: { type: Number, required: true },
   date: { type: Date, required: true },
+  user_id: { type: String, required: true }
 });
 
 const User = mongoose.model("User", userSchema);
@@ -56,12 +57,13 @@ app
     });
   });
 
-app.post("/api/users/:_id/exercise", async (req, res) => {
+app.post("/api/users/:_id/exercises", async (req, res) => {
   const { _id } = req.params;
   let { description, duration, date } = req.body;
   try {
     const existedUser = await User.findById(_id);
-    if (!date) date = new Date();
+    if (!date) date = new Date()
+    else date = new Date(date);
     const newExercise = new Exercise({
       user_id: _id,
       username: existedUser.username,
@@ -93,35 +95,38 @@ app.get("/api/users/:id/logs", async (req, res) => {
   let { from, to, limit } = req.query;
   try {
     const user = await User.findById(id);
-    const exercises = await Exercise.find({ user_id: id });
+    let exercises = [];
+    if (from && to) {
+      if (limit) exercises = await Exercise.find({ user_id: id, date: {$gte: from,$lte: to}}).limit(limit)
+      else exercises = await Exercise.find({ user_id: id, date: {$gte: from,$lte: to}});
+    } else if (limit) {
+      exercises = await Exercise.find({ user_id: id }).limit(limit);
+    } else {
+      exercises = await Exercise.find({ user_id: id });
+    }
     const exerciseResult = [];
     exercises.map((exercise) => {
-      // check if date is between from and to
-      if (from && to) {
-        from = new Date(from);
-        to = new Date(to);
-        if (exercise.date >= from && exercise.date <= to) {
-          exerciseResult.push({
-            description: exercise.description,
-            duration: exercise.duration,
-            date: exercise.date.toDateString(),
-          });
-        }
-      } else {
-        exerciseResult.push({
-          description: exercise.description,
-          duration: exercise.duration,
-          date: exercise.date.toDateString(),
-        });
-      }
+      exerciseResult.push({
+        description: exercise.description,
+        duration: exercise.duration,
+        date: exercise.date.toDateString()
+      });
     });
+    console.log({
+      username: user.username,
+      count: exercises.length,
+      _id: user._id.toString(),
+      log: exerciseResult,
+    })
     res.json({
       username: user.username,
       count: exercises.length,
-      _id: user._id,
+      _id: user._id.toString(),
       log: exerciseResult,
     });
+    
   } catch (err) {
+    console.log(err);
     res.json({ error: err });
   }
 });
